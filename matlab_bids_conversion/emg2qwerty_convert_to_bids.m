@@ -110,51 +110,50 @@ function emg2qwerty_convert_to_bids(hdf5_file, bids_root, varargin)
     fprintf('  Task: %s\n', task_name);
 
     % Prepare BIDS export parameters
-    bids_options = struct();
+    % General information (gInfo)
+    gInfo = struct();
+    gInfo.Name = 'emg2qwerty';
+    gInfo.BIDSVersion = 'BEP-034';  % EMG extension
+    gInfo.License = 'CC-BY-NC-SA-4.0';
+    gInfo.Authors = {'Meta Reality Labs CTRL-labs'};
+    gInfo.ReferencesAndLinks = {'https://github.com/facebookresearch/emg2qwerty', ...
+                                'https://arxiv.org/abs/2410.20081'};
+    gInfo.DatasetDOI = '';
 
-    % General information
-    bids_options.Name = 'emg2qwerty';
-    bids_options.BIDSVersion = 'BEP-034';  % EMG extension
-    bids_options.License = 'CC-BY-NC-SA-4.0';
-    bids_options.Authors = {'Meta Reality Labs CTRL-labs'};
-    bids_options.ReferencesAndLinks = {'https://github.com/facebookresearch/emg2qwerty', ...
-                                       'https://arxiv.org/abs/2410.20081'};
-    bids_options.DatasetDOI = '';
+    % Task-level information (tInfo)
+    tInfo = struct();
+    tInfo.TaskName = task_name;
+    tInfo.TaskDescription = ['Touch typing on a QWERTY keyboard while wearing ' ...
+                            'EMG wristbands. Participants typed prompted text.'];
+    tInfo.InstitutionName = 'Meta Reality Labs';
+    tInfo.InstitutionAddress = '';
+    tInfo.Manufacturer = 'CTRL-Labs at Meta Reality Labs';
+    tInfo.ManufacturersModelName = 'sEMG Research Device (sEMG-RD)';
+    tInfo.SamplingFrequency = 2000;
+    tInfo.PowerLineFrequency = 60;
+    tInfo.HardwareFilters = struct('Highpass', struct('CutoffHz', 20), ...
+                                   'Lowpass', struct('CutoffHz', 850));
+    tInfo.SoftwareFilters = 'n/a';
+    tInfo.RecordingType = 'continuous';
+    tInfo.RecordingDuration = EEG.xmax;
 
     % EMG-specific metadata
-    bids_options.EMGChannelCount = 32;
-    bids_options.EMGPlacementScheme = 'Other';
-    bids_options.EMGPlacementSchemeDescription = ['Two wristbands with 16 dry electrodes each, ' ...
-                                                  'placed on left and right wrists. ' ...
-                                                  'See channels.tsv for details.'];
-    bids_options.EMGReference = 'bipolar';
-    bids_options.EMGGround = 'n/a';
-    bids_options.Manufacturer = 'CTRL-Labs at Meta Reality Labs';
-    bids_options.ManufacturersModelName = 'sEMG Research Device (sEMG-RD)';
-    bids_options.SamplingFrequency = 2000;
-    bids_options.PowerLineFrequency = 60;
-    bids_options.HardwareFilters = struct('Highpass', struct('CutoffHz', 20), ...
-                                          'Lowpass', struct('CutoffHz', 850));
-    bids_options.SoftwareFilters = 'n/a';
-    bids_options.RecordingType = 'continuous';
-    bids_options.RecordingDuration = EEG.xmax;
-    bids_options.TaskDescription = ['Touch typing on a QWERTY keyboard while wearing ' ...
-                                    'EMG wristbands. Participants typed prompted text.'];
-    bids_options.TaskName = task_name;
-    bids_options.InstitutionName = 'Meta Reality Labs';
-    bids_options.InstitutionAddress = '';
-
-    % Channel-level information
-    bids_options.EMGChannelCount = 32;
+    tInfo.EMGChannelCount = 32;
+    tInfo.EMGPlacementScheme = 'Other';
+    tInfo.EMGPlacementSchemeDescription = ['Two wristbands with 16 dry electrodes each, ' ...
+                                           'placed on left and right wrists. ' ...
+                                           'See channels.tsv for details.'];
+    tInfo.EMGReference = 'bipolar';
+    tInfo.EMGGround = 'n/a';
 
     % Coordinate system information
-    bids_options.EMGCoordinateSystem = 'Other';
-    bids_options.EMGCoordinateSystemDescription = ['Left wrist: X: USP → RSP; ' ...
+    tInfo.EMGCoordinateSystem = 'Other';
+    tInfo.EMGCoordinateSystemDescription = ['Left wrist: X: USP → RSP; ' ...
         'Y: Right-hand rule; Z: midpoint RSP-USP → LHE. ' ...
         'Right wrist: Mirrored placement. ' ...
         'RSP: Radial Styloid Process; USP: Ulnar Styloid Process; ' ...
         'LHE: Lateral Humerus Epicondyle'];
-    bids_options.EMGCoordinateUnits = 'percent';
+    tInfo.EMGCoordinateUnits = 'percent';
 
     % Save EEG to temporary file for bids_export
     temp_file = fullfile(tempdir, [EEG.setname '.set']);
@@ -201,8 +200,8 @@ function emg2qwerty_convert_to_bids(hdf5_file, bids_root, varargin)
 
         bids_export(files, ...
                    'targetdir', bids_root, ...
-                   'taskName', task_name, ...
-                   'gInfo', bids_options, ...
+                   'gInfo', gInfo, ...
+                   'tInfo', tInfo, ...
                    'pInfo', participant_info, ...
                    'pInfoDesc', pInfoDesc, ...
                    'trialtype', {}, ...

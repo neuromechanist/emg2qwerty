@@ -88,22 +88,29 @@ function EEG = emg2qwerty_load_hdf5(hdf5_path)
     EEG.xmax = (EEG.pnts - 1) / EEG.srate;
     EEG.times = (0:EEG.pnts-1) / EEG.srate;
 
+    % CRITICAL: Set datatype to 'emg' to trigger EMG-BIDS export
+    EEG.etc.datatype = 'emg';
+
     % Set up channel information
     fprintf('  Setting up channels...\n');
     for i = 1:16
         % Left wrist channels (0-15)
         EEG.chanlocs(i).labels = sprintf('EMG%d', i-1);
         EEG.chanlocs(i).type = 'EMG';
-        EEG.chanlocs(i).unit = 'V';
-        EEG.chanlocs(i).ref = 'bipolar';
-        EEG.chanlocs(i).description = 'left';
+        EEG.chanlocs(i).units = 'V';
+        EEG.chanlocs(i).reference = 'bipolar';
+        EEG.chanlocs(i).target_muscle = 'forearm muscles';
+        EEG.chanlocs(i).signal_electrode = sprintf('EMG%d', i-1);
+        EEG.chanlocs(i).group = 'left';
 
         % Right wrist channels (16-31)
         EEG.chanlocs(16+i).labels = sprintf('EMG%d', i-1);
         EEG.chanlocs(16+i).type = 'EMG';
-        EEG.chanlocs(16+i).unit = 'V';
-        EEG.chanlocs(16+i).ref = 'bipolar';
-        EEG.chanlocs(16+i).description = 'right';
+        EEG.chanlocs(16+i).units = 'V';
+        EEG.chanlocs(16+i).reference = 'bipolar';
+        EEG.chanlocs(16+i).target_muscle = 'forearm muscles';
+        EEG.chanlocs(16+i).signal_electrode = sprintf('EMG%d', i-1);
+        EEG.chanlocs(16+i).group = 'right';
     end
 
     % Create events from keystrokes
