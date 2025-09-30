@@ -1,0 +1,180 @@
+function EEG = emg2qwerty_load_hdf5(hdf5_path)
+% emg2qwerty_load_hdf5 - Load emg2qwerty HDF5 session file into EEGLAB structure
+%
+% Usage:
+%   EEG = emg2qwerty_load_hdf5(hdf5_path)
+%
+% Inputs:
+%   hdf5_path - Path to the emg2qwerty HDF5 session file
+%
+% Outputs:
+%   EEG       - EEGLAB structure with EMG data, events, and metadata
+%
+% Description:
+%   Loads a single emg2qwerty HDF5 session file and converts it to EEGLAB
+%   format. The HDF5 file contains:
+%   - Left EMG: 16 channels, 2kHz sampling
+%   - Right EMG: 16 channels, 2kHz sampling
+%   - Timestamps for each sample
+%   - Keystrokes: precise keystroke events with timing
+%   - Prompts: text prompts displayed to the user
+%
+% Example:
+%   EEG = emg2qwerty_load_hdf5('/path/to/session.hdf5');
+%
+% Author: Yahya Shirazi, SCCN, INC, UCSD
+% Date: 2025-09-30
+
+    % Check if file exists
+    if ~exist(hdf5_path, 'file')
+        error('File not found: %s', hdf5_path);
+    end
+
+    % Extract session name from filename
+    [~, session_name, ~] = fileparts(hdf5_path);
+
+    fprintf('Loading HDF5 file: %s\n', session_name);
+
+    % Read HDF5 structure
+    h5_group = '/emg2qwerty';
+
+    % Read timeseries data (compound dataset)
+    fprintf('  Reading EMG data...\n');
+    timeseries = h5read(hdf5_path, [h5_group '/timeseries']);
+
+    % Extract fields from compound dataset
+    % Data is already stored as channels x samples
+    emg_left = timeseries.emg_left;   % 16 x samples
+    emg_right = timeseries.emg_right; % 16 x samples
+    timestamps = timeseries.time;     % samples x 1
+
+    % Concatenate left and right EMG (32 channels total)
+    emg_data = [emg_left; emg_right];  % 32 x samples
+
+    % Read metadata
+    fprintf('  Reading metadata...\n');
+    user = h5readatt(hdf5_path, h5_group, 'user');
+    condition = h5readatt(hdf5_path, h5_group, 'condition');
+    duration_mins = h5readatt(hdf5_path, h5_group, 'duration_mins');
+
+    % Read keystrokes and prompts (JSON strings)
+    keystrokes_json = h5readatt(hdf5_path, h5_group, 'keystrokes');
+    prompts_json = h5readatt(hdf5_path, h5_group, 'prompts');
+
+    % Parse JSON
+    keystrokes = jsondecode(keystrokes_json);
+    prompts = jsondecode(prompts_json);
+
+    % Initialize EEGLAB structure
+    EEG = eeg_emptyset();
+
+    % Set basic parameters
+    EEG.setname = session_name;
+    EEG.filename = '';
+    EEG.filepath = '';
+    EEG.subject = user;
+    EEG.condition = condition;
+    EEG.session = [];  % Will be set during batch processing
+    EEG.comments = sprintf('emg2qwerty session: %s, user: %s, duration: %.2f mins', ...
+                           session_name, user, duration_mins);
+
+    % Set data
+    EEG.data = emg_data;  % 32 x samples
+    EEG.nbchan = size(emg_data, 1);
+    EEG.pnts = size(emg_data, 2);
+    EEG.trials = 1;  % Continuous data
+    EEG.srate = 2000;  % 2 kHz sampling rate
+    EEG.xmin = 0;
+    EEG.xmax = (EEG.pnts - 1) / EEG.srate;
+    EEG.times = (0:EEG.pnts-1) / EEG.srate;
+
+    % Set up channel information
+    fprintf('  Setting up channels...\n');
+    for i = 1:16
+        % Left wrist channels (0-15)
+        EEG.chanlocs(i).labels = sprintf('EMG%d', i-1);
+        EEG.chanlocs(i).type = 'EMG';
+        EEG.chanlocs(i).unit = 'V';
+        EEG.chanlocs(i).ref = 'bipolar';
+        EEG.chanlocs(i).description = 'left';
+
+        % Right wrist channels (16-31)
+        EEG.chanlocs(16+i).labels = sprintf('EMG%d', i-1);
+        EEG.chanlocs(16+i).type = 'EMG';
+        EEG.chanlocs(16+i).unit = 'V';
+        EEG.chanlocs(16+i).ref = 'bipolar';
+        EEG.chanlocs(16+i).description = 'right';
+    end
+
+    % Create events from keystrokes
+    fprintf('  Creating events from keystrokes...\n');
+    nevents = length(keystrokes);
+    if nevents > 0
+        EEG.event = struct('type', {}, 'latency', {}, 'duration', {}, ...
+                          'key', {}, 'urevent', {});
+
+        for i = 1:nevents
+            ks = keystrokes(i);
+
+            % Find latency in samples from timestamp
+            [~, idx_start] = min(abs(timestamps - ks.start));
+            [~, idx_end] = min(abs(timestamps - ks.end));
+
+            % Create event
+            EEG.event(i).type = sprintf('keystroke_%s', ks.key);
+            EEG.event(i).latency = idx_start;
+            EEG.event(i).duration = idx_end - idx_start;
+            EEG.event(i).key = ks.key;
+            EEG.event(i).urevent = i;
+        end
+    end
+
+    % Add prompt events
+    fprintf('  Adding prompt events...\n');
+    nprompts = length(prompts);
+    event_offset = nevents;
+
+    for i = 1:nprompts
+        prompt = prompts(i);
+
+        % Only process text_prompt events
+        if strcmp(prompt.name, 'text_prompt') && ~isempty(prompt.payload)
+            % Find latency in samples from timestamp
+            [~, idx_start] = min(abs(timestamps - prompt.start));
+            [~, idx_end] = min(abs(timestamps - prompt.end));
+
+            % Get prompt text
+            prompt_text = prompt.payload.text;
+            % Replace newline character
+            prompt_text = strrep(prompt_text, char(9166), '\n');  % ⏎ to \n
+
+            % Create event
+            event_idx = event_offset + i;
+            EEG.event(event_idx).type = 'prompt';
+            EEG.event(event_idx).latency = idx_start;
+            EEG.event(event_idx).duration = idx_end - idx_start;
+            EEG.event(event_idx).prompt_text = prompt_text;
+            EEG.event(event_idx).urevent = event_idx;
+        end
+    end
+
+    % Sort events by latency
+    if ~isempty(EEG.event)
+        [~, sort_idx] = sort([EEG.event.latency]);
+        EEG.event = EEG.event(sort_idx);
+
+        % Update urevent indices
+        for i = 1:length(EEG.event)
+            EEG.event(i).urevent = i;
+        end
+    end
+
+    % Update urevent structure
+    EEG.urevent = EEG.event;
+
+    % Check consistency
+    EEG = eeg_checkset(EEG);
+
+    fprintf('  Loaded: %d channels, %d samples (%.2f s), %d events\n', ...
+            EEG.nbchan, EEG.pnts, EEG.xmax, length(EEG.event));
+end
