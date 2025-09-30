@@ -83,13 +83,16 @@ function EEG = emg2qwerty_load_hdf5(hdf5_path)
     EEG.nbchan = size(emg_data, 1);
     EEG.pnts = size(emg_data, 2);
     EEG.trials = 1;  % Continuous data
-    EEG.srate = 2000;  % 2 kHz sampling rate
-    EEG.xmin = 0;
-    EEG.xmax = (EEG.pnts - 1) / EEG.srate;
-    EEG.times = (0:EEG.pnts-1) / EEG.srate;
+    EEG.srate = 2000;  % 2 kHz nominal sampling rate
+    EEG.xmin = timestamps(1);
+    EEG.xmax = timestamps(end);
+    % Use regular times for EEGLAB compatibility (resampling will handle irregular data)
+    EEG.times = timestamps'; % Store actual HDF5 timestamps
 
     % CRITICAL: Set datatype to 'emg' to trigger EMG-BIDS export
     EEG.etc.datatype = 'emg';
+    % Store original irregular timestamps for reference
+    EEG.etc.timestamps_original = timestamps';
 
     % Set up channel information
     fprintf('  Setting up channels...\n');
