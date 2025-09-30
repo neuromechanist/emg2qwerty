@@ -16,7 +16,7 @@ This converter provides a proper MATLAB implementation for converting emg2qwerty
 
 ## Dependencies
 
-1. **MATLAB** (R2019b or later recommended)
+1. **MATLAB** (R2022b or later recommended)
 2. **EEGLAB** - Download from https://sccn.ucsd.edu/eeglab/
 3. **eeg-bids plugin** - Clone from https://github.com/sccn/eeg-bids
 
@@ -34,9 +34,9 @@ This converter provides a proper MATLAB implementation for converting emg2qwerty
 ### Single File Conversion
 
 ```matlab
-% Convert a single HDF5 session file
-hdf5_file = '/Volumes/data/FRL/emg2qwerty/2020-08-13-1597354281-keystrokes.hdf5';
-bids_root = '/Users/yahya/Documents/git/emg2qwerty_bids';
+% Convert a single HDF5 session file (change paths as needed)
+hdf5_file = '/Volumes/data/FRL/emg2qwerty/2020-08-13-1597354281-keystrokes.hdf5'; 
+bids_root = '/Volumes/data/FRL/emg2qwerty_bids';
 
 emg2qwerty_convert_to_bids(hdf5_file, bids_root);
 ```
@@ -165,15 +165,14 @@ Sivakumar et al. (2024). emg2qwerty: A Large Dataset with Baselines for
 Touch Typing using Surface Electromyography. NeurIPS 2024.
 ```
 
-**eeg-bids plugin:**
+**emg-bids:**
 ```
-Pernet et al. (2019). EEG-BIDS, an extension to the brain imaging data
-structure for electroencephalography. Scientific Data, 6(1), 103.
+Under development - please cite the emg-bids paper when available.
 ```
 
 ## Author
 
-Yahya Shirazi
+Seyed Yahya Shirazi
 Swartz Center for Computational Neuroscience (SCCN)
 Institute for Neural Computation (INC)
 University of California San Diego (UCSD)
