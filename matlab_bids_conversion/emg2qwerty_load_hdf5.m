@@ -102,7 +102,8 @@ function EEG = emg2qwerty_load_hdf5(hdf5_path)
         EEG.chanlocs(i).reference = 'bipolar';
         EEG.chanlocs(i).target_muscle = 'forearm muscles';
         % signal_electrode refers to the physical electrode (can be duplicated across groups)
-        EEG.chanlocs(i).signal_electrode = sprintf('EMG%d', i-1);
+        % Use E0-E15 naming (same physical device worn on both arms)
+        EEG.chanlocs(i).signal_electrode = sprintf('E%d', i-1);
         EEG.chanlocs(i).group = 'left';
 
         % Right wrist channels (16-31)
@@ -112,10 +113,30 @@ function EEG = emg2qwerty_load_hdf5(hdf5_path)
         EEG.chanlocs(16+i).units = 'V';
         EEG.chanlocs(16+i).reference = 'bipolar';
         EEG.chanlocs(16+i).target_muscle = 'forearm muscles';
-        % signal_electrode refers to physical electrode on right wrist (EMG0-15)
-        EEG.chanlocs(16+i).signal_electrode = sprintf('EMG%d', i-1);
+        % signal_electrode refers to physical electrode on right wrist (E0-E15)
+        EEG.chanlocs(16+i).signal_electrode = sprintf('E%d', i-1);
         EEG.chanlocs(16+i).group = 'right';
     end
+
+    % Set up coordinate systems for both forearms
+    % This will trigger space-leftForearm_coordsystem.json and space-rightForearm_coordsystem.json at root
+    EEG.chaninfo.BIDS.coordsystems = {};
+
+    % Left forearm coordinate system
+    leftCS = struct();
+    leftCS.space = 'leftForearm';
+    leftCS.EMGCoordinateSystem = 'Other';
+    leftCS.EMGCoordinateSystemDescription = 'X: USP → RSP; Y: Right-hand rule (limits: Olecranon Process → Cubital Fossa); Z: midpoint RSP-USP → LHE; Radial Styloid Process (RSP); Ulnar Styloid Process (USP), Lateral Humerus Epicondyle (LHE), Posterior Elbow (Olecranon Process)';
+    leftCS.EMGCoordinateUnits = 'percent';
+    EEG.chaninfo.BIDS.coordsystems{1} = leftCS;
+
+    % Right forearm coordinate system
+    rightCS = struct();
+    rightCS.space = 'rightForearm';
+    rightCS.EMGCoordinateSystem = 'Other';
+    rightCS.EMGCoordinateSystemDescription = 'X: RSP → USP; Y: Right-hand rule (limits: Olecranon Process → Cubital Fossa); Z: midpoint RSP-USP → LHE; Radial Styloid Process (RSP); Ulnar Styloid Process (USP), Lateral Humerus Epicondyle (LHE), Posterior Elbow (Olecranon Process)';
+    rightCS.EMGCoordinateUnits = 'percent';
+    EEG.chaninfo.BIDS.coordsystems{2} = rightCS;
 
     % Create events from keystrokes
     fprintf('  Creating events from keystrokes...\n');
