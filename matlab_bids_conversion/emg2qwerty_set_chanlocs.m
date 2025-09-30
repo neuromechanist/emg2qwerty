@@ -69,7 +69,7 @@ function EEG = emg2qwerty_set_chanlocs(EEG)
 
     % Set positions for all channels
     for i = 1:16
-        % Left wrist channels (1-16)
+        % Left wrist channels (1-16): EMG0-EMG15
         EEG.chanlocs(i).labels = sprintf('EMG%d', i-1);
         EEG.chanlocs(i).X = left_positions(i, 1);
         EEG.chanlocs(i).Y = left_positions(i, 2);
@@ -82,8 +82,9 @@ function EEG = emg2qwerty_set_chanlocs(EEG)
         EEG.chanlocs(i).radius = [];
         EEG.chanlocs(i).type = 'EMG';
 
-        % Right wrist channels (17-32)
-        EEG.chanlocs(16+i).labels = sprintf('EMG%d', i-1);
+        % Right wrist channels (17-32): EMG16-EMG31
+        % Channel names must be unique!
+        EEG.chanlocs(16+i).labels = sprintf('EMG%d', 15+i);
         EEG.chanlocs(16+i).X = right_positions(i, 1);
         EEG.chanlocs(16+i).Y = right_positions(i, 2);
         EEG.chanlocs(16+i).Z = right_positions(i, 3);

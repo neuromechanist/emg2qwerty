@@ -95,20 +95,24 @@ function EEG = emg2qwerty_load_hdf5(hdf5_path)
     fprintf('  Setting up channels...\n');
     for i = 1:16
         % Left wrist channels (0-15)
+        % Channel names must be UNIQUE across the entire dataset
         EEG.chanlocs(i).labels = sprintf('EMG%d', i-1);
         EEG.chanlocs(i).type = 'EMG';
         EEG.chanlocs(i).units = 'V';
         EEG.chanlocs(i).reference = 'bipolar';
         EEG.chanlocs(i).target_muscle = 'forearm muscles';
+        % signal_electrode refers to the physical electrode (can be duplicated across groups)
         EEG.chanlocs(i).signal_electrode = sprintf('EMG%d', i-1);
         EEG.chanlocs(i).group = 'left';
 
         % Right wrist channels (16-31)
-        EEG.chanlocs(16+i).labels = sprintf('EMG%d', i-1);
+        % Channel names continue numbering to ensure uniqueness
+        EEG.chanlocs(16+i).labels = sprintf('EMG%d', 15+i);  % 16-31
         EEG.chanlocs(16+i).type = 'EMG';
         EEG.chanlocs(16+i).units = 'V';
         EEG.chanlocs(16+i).reference = 'bipolar';
         EEG.chanlocs(16+i).target_muscle = 'forearm muscles';
+        % signal_electrode refers to physical electrode on right wrist (EMG0-15)
         EEG.chanlocs(16+i).signal_electrode = sprintf('EMG%d', i-1);
         EEG.chanlocs(16+i).group = 'right';
     end
