@@ -86,7 +86,7 @@ fprintf('Found %d HDF5 files\n\n', numFiles);
 
 %% ========== CONVERSION ==========
 fprintf('==========================================================\n');
-fprintf('Starting batch conversion\n');
+fprintf('Starting batch conversion (subject-by-subject)\n');
 fprintf('==========================================================\n\n');
 
 % Create output directory
@@ -95,44 +95,86 @@ if ~exist(bidsRoot, 'dir')
     fprintf('Created output directory: %s\n\n', bidsRoot);
 end
 
+% Group files by subject
+% Extract subject IDs from filenames
+fprintf('Grouping sessions by subject...\n');
+subjectFiles = struct();
+for i = 1:numFiles
+    fname = files(i).name;
+    % Extract user ID from filename (last component before .hdf5)
+    parts = strsplit(fname, '-');
+    % Check if last part contains user ID (before .hdf5)
+    lastPart = strrep(parts{end}, '.hdf5', '');
+    if ~strcmp(lastPart, 'keystrokes')
+        subjectID = lastPart;
+    else
+        % No user ID in filename - use 'unknown'
+        subjectID = 'unknown';
+    end
+
+    % Add to struct
+    if ~isfield(subjectFiles, ['sub_' subjectID])
+        subjectFiles.(['sub_' subjectID]) = {};
+    end
+    subjectFiles.(['sub_' subjectID]){end+1} = fullfile(files(i).folder, files(i).name);
+end
+
+% Get list of subjects
+subjects = fieldnames(subjectFiles);
+numSubjects = length(subjects);
+fprintf('Found %d unique subjects\n\n', numSubjects);
+
 % Track statistics
 successCount = 0;
 failCount = 0;
 failedFiles = {};
+subjectStats = struct();
 
 % Start timer
 tic;
 
-% Process each file
-for i = 1:numFiles
-    fprintf('----------------------------------------------------------\n');
-    fprintf('Processing %d/%d: %s\n', i, numFiles, files(i).name);
-    fprintf('----------------------------------------------------------\n');
+% Process each subject (all sessions)
+for iSubj = 1:numSubjects
+    subjectID = subjects{iSubj};
+    sessions = subjectFiles.(subjectID);
+    numSessions = length(sessions);
 
-    hdf5File = fullfile(files(i).folder, files(i).name);
+    fprintf('==========================================================\n');
+    fprintf('Subject %d/%d: %s (%d sessions)\n', iSubj, numSubjects, strrep(subjectID, 'sub_', ''), numSessions);
+    fprintf('==========================================================\n');
+
+    subjSuccess = 0;
+    subjFail = 0;
+
+    % Process each session for this subject
+    for iSess = 1:numSessions
+        hdf5File = sessions{iSess};
+        [~, fname, ~] = fileparts(hdf5File);
+
+        fprintf('  Session %d/%d: %s\n', iSess, numSessions, fname);
 
     try
         % Convert file
-        emg2qwerty_convert_to_bids(hdf5File, bidsRoot, ...
-                                   'task', 'typing');
+            emg2qwerty_convert_to_bids(hdf5File, bidsRoot, 'task', 'typing');
 
         successCount = successCount + 1;
-        fprintf('✓ SUCCESS\n\n');
+            subjSuccess = subjSuccess + 1;
+            fprintf('    ✓ SUCCESS\n');
 
     catch ME
         failCount = failCount + 1;
-        failedFiles{end+1} = files(i).name; %#ok<SAGROW>
+            subjFail = subjFail + 1;
+            failedFiles{end+1} = fname; %#ok<SAGROW>
 
-        fprintf('✗ FAILED: %s\n', ME.message);
-        fprintf('Stack trace:\n');
-        for j = 1:length(ME.stack)
-            fprintf('  %s (line %d)\n', ME.stack(j).name, ME.stack(j).line);
+            fprintf('    ✗ FAILED: %s\n', ME.message);
         end
-        fprintf('\n');
-
-        % Continue with next file
-        continue;
     end
+
+    % Subject summary
+    fprintf('Subject %s: %d/%d sessions successful\n\n', strrep(subjectID, 'sub_', ''), subjSuccess, numSessions);
+    subjectStats.(subjectID).total = numSessions;
+    subjectStats.(subjectID).success = subjSuccess;
+    subjectStats.(subjectID).failed = subjFail;
 end
 
 % Stop timer
