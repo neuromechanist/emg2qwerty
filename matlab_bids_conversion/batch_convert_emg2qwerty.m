@@ -28,10 +28,10 @@ eeglabPath = '/Users/yahya/Documents/git/eeglab';
 bidsPluginPath = '/Users/yahya/Documents/git/eeg-bids';
 
 % Path to emg2qwerty HDF5 data
-dataDir = '/Volumes/data/FRL/emg2qwerty';
+dataDir = '/Volumes/S1/Datasets/FRL/emg2qwerty';
 
 % Output BIDS directory
-bidsRoot = '/Users/yahya/Documents/git/emg2qwerty_bids';
+bidsRoot = '/Volumes/S1/Datasets/FRL/emg2qwerty_bids';
 
 % Path to this converter directory
 converterPath = '/Users/yahya/Documents/git/emg2qwerty/matlab_bids_conversion';
@@ -153,16 +153,16 @@ for iSubj = 1:numSubjects
 
         fprintf('  Session %d/%d: %s\n', iSess, numSessions, fname);
 
-    try
-        % Convert file
+        try
+            % Convert file
             emg2qwerty_convert_to_bids(hdf5File, bidsRoot, 'task', 'typing');
 
-        successCount = successCount + 1;
+            successCount = successCount + 1;
             subjSuccess = subjSuccess + 1;
             fprintf('    ✓ SUCCESS\n');
 
-    catch ME
-        failCount = failCount + 1;
+        catch ME
+            failCount = failCount + 1;
             subjFail = subjFail + 1;
             failedFiles{end+1} = fname; %#ok<SAGROW>
 

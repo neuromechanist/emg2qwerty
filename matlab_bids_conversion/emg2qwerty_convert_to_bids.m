@@ -156,18 +156,18 @@ function emg2qwerty_convert_to_bids(hdf5_file, bids_root, varargin)
     tInfo.EMGCoordinateUnits = 'percent';
 
     % Save EEG to temporary file for bids_export
-    temp_file = fullfile(tempdir, [EEG.setname '.set']);
+    temp_dir = '~/tmp';
+    if ~exist(temp_dir, 'dir')
+        mkdir(temp_dir);
+    end
+    temp_file = fullfile(temp_dir, [EEG.setname '.set']);
     pop_saveset(EEG, 'filename', temp_file);
 
     % Prepare file structure for bids_export
     % The bids_export function expects specific formats
     files(1).file = {temp_file};  % Must be cell array
-    files(1).session = str2double(session_id);
-    if isnan(files(1).session)
-        % If session_id is not numeric, use 1
-        files(1).session = 1;
-    end
-    files(1).run = 1;
+    files(1).session = {session_id};  % Must be cell array matching file length
+    files(1).run = [1];  % Numeric array (will be converted to cell)
     files(1).task = {task_name};  % Must be cell array
 
     % Subject information (cell array with header row + data rows)
@@ -252,6 +252,15 @@ function emg2qwerty_convert_to_bids(hdf5_file, bids_root, varargin)
         fprintf('========================================\n');
 
     catch ME
+        % Clean up temporary files even on error
+        if exist(temp_file, 'file')
+            delete(temp_file);
+        end
+        fdt_file = strrep(temp_file, '.set', '.fdt');
+        if exist(fdt_file, 'file')
+            delete(fdt_file);
+        end
+
         fprintf('\n========================================\n');
         fprintf('ERROR during BIDS export:\n');
         fprintf('%s\n', ME.message);
