@@ -51,6 +51,38 @@ function EEG = emg2qwerty_load_hdf5(hdf5_path)
     % Concatenate left and right EMG (32 channels total)
     emg_data = [emg_left; emg_right];  % 32 x samples
 
+    % Check for irregular sampling and resample if needed
+    fprintf('  Checking sampling regularity...\n');
+    intervals = diff(timestamps);
+    avgInterval = mean(intervals);
+    maxDeviation = max(abs(intervals - avgInterval)) / avgInterval;
+
+    if maxDeviation > 0.01  % 1% tolerance
+        fprintf('  Irregular sampling detected (%.2f%% deviation)\n', maxDeviation*100);
+        fprintf('  Resampling to regular 2000 Hz...\n');
+
+        % Target regular sampling at 2000 Hz
+        targetSrate = 2000;
+        numSamples = length(timestamps);
+        regularTimestamps = linspace(timestamps(1), timestamps(end), numSamples)';
+
+        % Resample each channel using interpolation
+        emg_resampled = zeros(size(emg_data));
+        for iChan = 1:size(emg_data, 1)
+            emg_resampled(iChan, :) = interp1(timestamps, emg_data(iChan, :), regularTimestamps, 'pchip');
+        end
+
+        % Store original for event mapping
+        timestamps_original = timestamps;
+        timestamps = regularTimestamps;
+        emg_data = emg_resampled;
+
+        fprintf('  Resampling complete\n');
+    else
+        fprintf('  Sampling is regular (%.4f%% deviation)\n', maxDeviation*100);
+        timestamps_original = timestamps;
+    end
+
     % Read metadata
     fprintf('  Reading metadata...\n');
     user = h5readatt(hdf5_path, h5_group, 'user');
@@ -83,16 +115,14 @@ function EEG = emg2qwerty_load_hdf5(hdf5_path)
     EEG.nbchan = size(emg_data, 1);
     EEG.pnts = size(emg_data, 2);
     EEG.trials = 1;  % Continuous data
-    EEG.srate = 2000;  % 2 kHz nominal sampling rate
+    EEG.srate = 2000;  % 2 kHz sampling rate
     EEG.xmin = timestamps(1);
     EEG.xmax = timestamps(end);
-    % Use regular times for EEGLAB compatibility (resampling will handle irregular data)
-    EEG.times = timestamps'; % Store actual HDF5 timestamps
+    % Use regular timestamps (resampled if irregular)
+    EEG.times = timestamps';
 
     % CRITICAL: Set datatype to 'emg' to trigger EMG-BIDS export
     EEG.etc.datatype = 'emg';
-    % Store original irregular timestamps for reference
-    EEG.etc.timestamps_original = timestamps';
 
     % Set up channel information
     fprintf('  Setting up channels...\n');
@@ -151,9 +181,9 @@ function EEG = emg2qwerty_load_hdf5(hdf5_path)
         for i = 1:nevents
             ks = keystrokes(i);
 
-            % Find latency in samples from timestamp
-            [~, idx_start] = min(abs(timestamps - ks.start));
-            [~, idx_end] = min(abs(timestamps - ks.end));
+            % Find latency in samples from original irregular timestamps
+            [~, idx_start] = min(abs(timestamps_original - ks.start));
+            [~, idx_end] = min(abs(timestamps_original - ks.end));
 
             % Create event
             EEG.event(i).type = sprintf('keystroke_%s', ks.key);
@@ -174,9 +204,9 @@ function EEG = emg2qwerty_load_hdf5(hdf5_path)
 
         % Only process text_prompt events
         if strcmp(prompt.name, 'text_prompt') && ~isempty(prompt.payload)
-            % Find latency in samples from timestamp
-            [~, idx_start] = min(abs(timestamps - prompt.start));
-            [~, idx_end] = min(abs(timestamps - prompt.end));
+            % Find latency in samples from original irregular timestamps
+            [~, idx_start] = min(abs(timestamps_original - prompt.start));
+            [~, idx_end] = min(abs(timestamps_original - prompt.end));
 
             % Get prompt text
             prompt_text = prompt.payload.text;
