@@ -197,7 +197,7 @@ function EEG = emg2qwerty_load_hdf5(hdf5_path)
     % Add prompt events
     fprintf('  Adding prompt events...\n');
     nprompts = length(prompts);
-    event_offset = nevents;
+    event_count = nevents;  % Start counting from last keystroke event
 
     for i = 1:nprompts
         prompt = prompts(i);
@@ -213,32 +213,21 @@ function EEG = emg2qwerty_load_hdf5(hdf5_path)
             % Replace newline character
             prompt_text = strrep(prompt_text, char(9166), '\n');  % ⏎ to \n
 
-            % Create event
-            event_idx = event_offset + i;
-            EEG.event(event_idx).type = 'prompt';
-            EEG.event(event_idx).latency = idx_start;
-            EEG.event(event_idx).duration = idx_end - idx_start;
-            EEG.event(event_idx).prompt_text = prompt_text;
-            EEG.event(event_idx).urevent = event_idx;
-        end
-    end
-
-    % Sort events by latency
-    if ~isempty(EEG.event)
-        [~, sort_idx] = sort([EEG.event.latency]);
-        EEG.event = EEG.event(sort_idx);
-
-        % Update urevent indices
-        for i = 1:length(EEG.event)
-            EEG.event(i).urevent = i;
+            % Create event (increment counter for each valid event)
+            event_count = event_count + 1;
+            EEG.event(event_count).type = 'prompt';
+            EEG.event(event_count).latency = idx_start;
+            EEG.event(event_count).duration = idx_end - idx_start;
+            EEG.event(event_count).prompt_text = prompt_text;
+            EEG.event(event_count).urevent = event_count;
         end
     end
 
     % Update urevent structure
     EEG.urevent = EEG.event;
 
-    % Check consistency
-    EEG = eeg_checkset(EEG);
+    % Check consistency and sort events by latency
+    EEG = eeg_checkset(EEG, 'eventconsistency');
 
     fprintf('  Loaded: %d channels, %d samples (%.2f s), %d events\n', ...
             EEG.nbchan, EEG.pnts, EEG.xmax, length(EEG.event));
