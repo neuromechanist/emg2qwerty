@@ -113,7 +113,7 @@ function emg2qwerty_convert_to_bids(hdf5_file, bids_root, varargin)
     % General information (gInfo)
     gInfo = struct();
     gInfo.Name = 'emg2qwerty';
-    gInfo.BIDSVersion = 'BEP-034';  % EMG extension
+    gInfo.BIDSVersion = 'BEP-042';  % EMG extension
     gInfo.License = 'CC-BY-NC-SA-4.0';
     gInfo.Authors = {'Meta Reality Labs CTRL-labs'};
     gInfo.ReferencesAndLinks = {'https://github.com/facebookresearch/emg2qwerty', ...
