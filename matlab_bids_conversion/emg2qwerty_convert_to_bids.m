@@ -198,6 +198,16 @@ function emg2qwerty_convert_to_bids(hdf5_file, bids_root, varargin)
         pInfoDesc.sex.Levels.M = 'male';
         pInfoDesc.sex.Levels.F = 'female';
 
+        % Define event fields to export
+        eInfo = {
+            'onset'       'latency';
+            'duration'    'duration';
+            'sample'      'latency';
+            'value'       'type';
+            'key'         'key';
+            'prompt_text' 'prompt_text'
+        };
+
         % Create event description structure
         eInfoDesc = struct();
         eInfoDesc.onset.Description = 'Event onset time';
@@ -209,6 +219,8 @@ function emg2qwerty_convert_to_bids(hdf5_file, bids_root, varargin)
         eInfoDesc.value.Description = 'Event type: keystroke_<key> for key presses, prompt for text prompts displayed to participant';
         eInfoDesc.value.Levels.keystroke = 'Key press event (key name follows underscore)';
         eInfoDesc.value.Levels.prompt = 'Text prompt displayed to participant';
+        eInfoDesc.key.Description = 'Key pressed (for keystroke events only)';
+        eInfoDesc.prompt_text.Description = 'Text prompt displayed to participant (for prompt events only)';
 
         bids_export(files, ...
                    'targetdir', bids_root, ...
@@ -216,6 +228,7 @@ function emg2qwerty_convert_to_bids(hdf5_file, bids_root, varargin)
                    'tInfo', tInfo, ...
                    'pInfo', participant_info, ...
                    'pInfoDesc', pInfoDesc, ...
+                   'eInfo', eInfo, ...
                    'eInfoDesc', eInfoDesc, ...
                    'trialtype', {}, ...
                    'renametype', {}, ...
